@@ -2,6 +2,10 @@
 
 A quiet place for your voice. Local-first desktop dictation and meeting notes, built with Rust, Tauri 2, and Svelte 5.
 
+<!-- live-links -->
+**Project page:** [gitguy268.github.io/quicktalk](https://gitguy268.github.io/quicktalk/) · [quicktalk-pied.vercel.app](https://quicktalk-pied.vercel.app)
+<!-- /live-links -->
+
 <!-- run-steps:start -->
 ## Run it locally, step by step
 
