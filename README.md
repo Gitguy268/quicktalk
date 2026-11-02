@@ -2,6 +2,34 @@
 
 A quiet place for your voice. Local-first desktop dictation and meeting notes, built with Rust, Tauri 2, and Svelte 5.
 
+<!-- run-steps:start -->
+## Run it locally, step by step
+
+1. **Install** [Node.js](https://nodejs.org) 22 or newer, current stable [Rust](https://rustup.rs), Python 3, Git, CMake and a C++ toolchain. macOS also needs Apple's command line tools.
+
+2. **Get the code:**
+
+   ```sh
+   git clone https://github.com/Gitguy268/quicktalk.git
+   cd quicktalk
+   ```
+
+3. **Install the dependencies and build the speech engine:**
+
+   ```sh
+   npm ci
+   python3 scripts/build-engine.py
+   ```
+
+4. **Start it:**
+
+   ```sh
+   npm run tauri -- dev
+   ```
+
+5. **In the app,** choose Settings → Speech models → Everyday → Download, then press `Cmd/Ctrl+Shift+Space` to dictate.
+<!-- run-steps:end -->
+
 ## Start
 
 Open the QuickTalk app, then choose **Settings → Speech models → Everyday → Download**. Downloading is a one-time operation. Choose **Light** for the smallest model. You can record before downloading; audio is retained if transcription cannot run.
