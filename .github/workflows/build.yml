@@ -31,7 +31,7 @@ jobs:
       - run: npm run check
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
       - run: npm run tauri -- build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuickTalk-${{ matrix.os }}
           path: |
