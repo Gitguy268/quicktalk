@@ -34,6 +34,32 @@ A quiet place for your voice. Local-first desktop dictation and meeting notes, b
 5. **In the app,** choose Settings → Speech models → Everyday → Download, then press `Cmd/Ctrl+Shift+Space` to dictate.
 <!-- run-steps:end -->
 
+## Install
+
+**macOS (Homebrew):**
+
+```sh
+brew trust gitguy268/tap
+brew install --cask gitguy268/tap/quicktalk
+```
+
+The cask installs the release build (Apple silicon or Intel, macOS 14+). It isn't notarised, so the cask clears the quarantine flag.
+
+<details>
+<summary><b>Linux (Flatpak)</b></summary>
+
+Download `io.github.gitguy268.quicktalk.flatpak` from the [latest release](https://github.com/Gitguy268/quicktalk/releases/latest), then:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./io.github.gitguy268.quicktalk.flatpak
+flatpak run io.github.gitguy268.quicktalk
+```
+
+This Flatpak is built by this repo's workflow; it isn't on Flathub. [packaging/flatpak](packaging/flatpak/README.md) has the build steps.
+
+</details>
+
 ## Start
 
 Open the QuickTalk app, then choose **Settings → Speech models → Everyday → Download**. Downloading is a one-time operation. Choose **Light** for the smallest model. You can record before downloading; audio is retained if transcription cannot run.

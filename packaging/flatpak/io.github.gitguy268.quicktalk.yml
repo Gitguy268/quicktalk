@@ -1,0 +1,49 @@
+# Self-hosted Flatpak for QuickTalk. It repackages the .deb that `npm run tauri -- build` makes
+# on Ubuntu 24.04, and builds the tray library from Flathub's shared modules. See README.md here;
+# CI does all of it in .github/workflows/build.yml.
+app-id: io.github.gitguy268.quicktalk
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: quicktalk
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  # Tray icon: tauri's tray loads libayatana-appindicator at run time.
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+  - name: quicktalk
+    buildsystem: simple
+    build-commands:
+      - ar -x quicktalk.deb
+      - tar -xf data.tar.*
+      - cp -a usr/bin usr/lib /app/
+      # The binary is named after the product in some Tauri versions.
+      - test -e /app/bin/quicktalk || ln -s "$(ls /app/bin | head -n 1)" /app/bin/quicktalk
+      - install -Dm644 io.github.gitguy268.quicktalk.desktop /app/share/applications/io.github.gitguy268.quicktalk.desktop
+      - install -Dm644 io.github.gitguy268.quicktalk.metainfo.xml /app/share/metainfo/io.github.gitguy268.quicktalk.metainfo.xml
+      - install -Dm644 icons/32x32.png /app/share/icons/hicolor/32x32/apps/io.github.gitguy268.quicktalk.png
+      - install -Dm644 icons/64x64.png /app/share/icons/hicolor/64x64/apps/io.github.gitguy268.quicktalk.png
+      - install -Dm644 icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.gitguy268.quicktalk.png
+      - install -Dm644 icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/io.github.gitguy268.quicktalk.png
+      - install -Dm644 icons/icon.png /app/share/icons/hicolor/512x512/apps/io.github.gitguy268.quicktalk.png
+      - install -Dm644 LICENSE /app/share/licenses/io.github.gitguy268.quicktalk/LICENSE
+    sources:
+      - type: file
+        path: quicktalk.deb
+      - type: dir
+        path: ../../src-tauri/icons
+        dest: icons
+      - type: file
+        path: ../../LICENSE
+      - type: file
+        path: io.github.gitguy268.quicktalk.desktop
+      - type: file
+        path: io.github.gitguy268.quicktalk.metainfo.xml
