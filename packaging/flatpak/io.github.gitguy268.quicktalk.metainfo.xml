@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.gitguy268.quicktalk</id>
+  <name>QuickTalk</name>
+  <summary>Local-first dictation and meeting notes</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.gitguy268">
+    <name>Lucas Van De Weerd</name>
+  </developer>
+  <description>
+    <p>QuickTalk turns your voice into text on your own computer. It runs whisper.cpp locally for dictation and meeting notes.</p>
+  </description>
+  <launchable type="desktop-id">io.github.gitguy268.quicktalk.desktop</launchable>
+  <url type="homepage">https://github.com/Gitguy268/quicktalk</url>
+  <url type="bugtracker">https://github.com/Gitguy268/quicktalk/issues</url>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Utility</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-10"/>
+  </releases>
+</component>

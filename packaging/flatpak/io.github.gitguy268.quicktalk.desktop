@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=QuickTalk
+Comment=Local-first dictation and meeting notes
+Exec=quicktalk
+Icon=io.github.gitguy268.quicktalk
+Terminal=false
+Categories=AudioVideo;Audio;Utility;
+Keywords=dictation;speech;transcription;whisper;meeting;
+StartupWMClass=QuickTalk
