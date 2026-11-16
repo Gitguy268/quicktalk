@@ -1,0 +1,92 @@
+name: Rolling release
+
+# Keeps one GitHub Release, tagged `latest`, in step with the newest commit on `main`:
+# the tag is moved to that commit and the assets are rebuilt and replaced on every push.
+on:
+  workflow_run:
+    workflows: ["Desktop builds"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rolling-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Collect the desktop builds
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download the artifacts of the build run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list --workflow build.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          gh run download "$RUN_ID" --dir a
+          mkdir -p out
+          # Installers and disk images from every OS (the .dmg holds the macOS app).
+          find a -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*-setup.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -exec cp {} out/ \;
+          ls -l out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rolling-bin
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    name: Update the rolling release
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: rolling-*
+          path: out
+          merge-multiple: true
+      - name: Move the latest tag and replace the assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          BRANCH: main
+          PRERELEASE: "false"
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          if [ -n "$(ls -A out)" ]; then (cd out && sha256sum -- * > SHA256SUMS.txt); fi
+          ls -l out
+          notes="Built automatically from the latest commit on \`$BRANCH\` ([\`${SHA::7}\`](https://github.com/$GH_REPO/commit/$SHA), $(date -u '+%Y-%m-%d %H:%M UTC')). This release is replaced on every push, so it can change at any time."
+          # Point the tag at this commit (create it the first time).
+          if gh api "repos/$GH_REPO/git/ref/tags/latest" > /dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest" -f sha="$SHA" -F force=true > /dev/null
+          else
+            gh api "repos/$GH_REPO/git/refs" -f ref=refs/tags/latest -f sha="$SHA" > /dev/null
+          fi
+          if [ "$PRERELEASE" = true ]; then flags=(--prerelease --latest=false); else flags=(--prerelease=false --latest); fi
+          if gh release view latest > /dev/null 2>&1; then
+            gh release edit latest --title "Rolling Release" --notes "$notes" "${flags[@]}"
+            # Drop assets that this build no longer produces.
+            gh release view latest --json assets --jq '.assets[].name' | while IFS= read -r a; do
+              [ -e "out/$a" ] || gh release delete-asset latest "$a" --yes
+            done
+          else
+            gh release create latest --verify-tag --title "Rolling Release" --notes "$notes" "${flags[@]}"
+          fi
+          if [ -n "$(ls -A out)" ]; then gh release upload latest out/* --clobber; fi
