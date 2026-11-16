@@ -19,7 +19,10 @@ concurrency:
 jobs:
   build:
     name: Collect the desktop builds
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Only pushes to this repo, never pull requests (a fork's branch can also be called main).
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
+    outputs:
+      sha: ${{ steps.src.outputs.sha }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -27,15 +30,18 @@ jobs:
       contents: read
     steps:
       - name: Download the artifacts of the build run
+        id: src
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          if [ -z "$RUN_ID" ]; then
-            RUN_ID=$(gh run list --workflow build.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$RUN_ID" ]; then  # manual run: newest successful push build (artifacts are kept 90 days)
+            read -r RUN_ID HEAD_SHA < <(gh run list --workflow build.yml --branch main --event push --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"')
           fi
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           gh run download "$RUN_ID" --dir a
           mkdir -p out
           # Installers and disk images from every OS (the .dmg holds the macOS app).
@@ -64,7 +70,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SHA: ${{ needs.build.outputs.sha }}
           BRANCH: main
           PRERELEASE: "false"
         run: |
@@ -82,11 +88,11 @@ jobs:
           if [ "$PRERELEASE" = true ]; then flags=(--prerelease --latest=false); else flags=(--prerelease=false --latest); fi
           if gh release view latest > /dev/null 2>&1; then
             gh release edit latest --title "Rolling Release" --notes "$notes" "${flags[@]}"
-            # Drop assets that this build no longer produces.
-            gh release view latest --json assets --jq '.assets[].name' | while IFS= read -r a; do
-              [ -e "out/$a" ] || gh release delete-asset latest "$a" --yes
-            done
           else
             gh release create latest --verify-tag --title "Rolling Release" --notes "$notes" "${flags[@]}"
           fi
           if [ -n "$(ls -A out)" ]; then gh release upload latest out/* --clobber; fi
+          # Then drop assets that this build no longer produces.
+          gh release view latest --json assets --jq '.assets[].name' | while IFS= read -r a; do
+            [ -e "out/$a" ] || gh release delete-asset latest "$a" --yes
+          done
