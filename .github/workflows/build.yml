@@ -37,3 +37,56 @@ jobs:
           path: |
             src-tauri/target/release/bundle/**
           if-no-files-found: error
+
+  flatpak:
+    name: Flatpak (x86_64)
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: QuickTalk-ubuntu-24.04
+          path: bundle
+      - name: Put the .deb and Flathub's shared modules next to the manifest
+        run: |
+          cp bundle/deb/*.deb packaging/flatpak/quicktalk.deb
+          git clone https://github.com/flathub/shared-modules packaging/flatpak/shared-modules
+          git -C packaging/flatpak/shared-modules checkout --detach e69357f3b96c2572456b5a371e4b973d98fdd284
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: packaging/flatpak/io.github.gitguy268.quicktalk.yml
+          bundle: io.github.gitguy268.quicktalk.flatpak
+          artifact-name: flatpak
+          cache: false
+      - run: appstreamcli validate --no-net --explain packaging/flatpak/io.github.gitguy268.quicktalk.metainfo.xml
+
+  release:
+    name: Attach to the GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, flatpak]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: art
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir out
+          cp art/QuickTalk-macos-15/dmg/*.dmg art/QuickTalk-macos-15-intel/dmg/*.dmg art/flatpak/*.flatpak out/
+          cp art/QuickTalk-ubuntu-24.04/deb/*.deb art/QuickTalk-ubuntu-24.04/appimage/*.AppImage out/ 2>/dev/null || true
+          (cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" out/* -R "$GITHUB_REPOSITORY" --verify-tag --title "QuickTalk ${TAG#v}" \
+              --notes "macOS: \`brew trust gitguy268/tap && brew install --cask gitguy268/tap/quicktalk\`. Linux: \`flatpak install --user ./io.github.gitguy268.quicktalk.flatpak\`, or the .deb / AppImage."
+          fi

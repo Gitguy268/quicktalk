@@ -11,3 +11,11 @@ src-tauri/binaries/*
 .env
 .env.*
 !.env.example
+
+# Flatpak build output (packaging/flatpak)
+packaging/flatpak/quicktalk.deb
+packaging/flatpak/shared-modules/
+packaging/flatpak/build/
+packaging/flatpak/repo/
+packaging/flatpak/.flatpak-builder/
+*.flatpak
